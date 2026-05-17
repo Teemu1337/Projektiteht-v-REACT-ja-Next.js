@@ -76,12 +76,16 @@ export async function createInvoice(prevState: State, formData: FormData) {
 }
 
 // Update Invoice
-export async function updateInvoice(id: string, formData: FormData) {
+export async function updateInvoice(prevState: State, formData: FormData) {
+  // Hae id formDatasta (lisätään piilotettuna kenttänä)
+  const id = formData.get('id') as string;
+  
   const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
+  
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
@@ -92,12 +96,12 @@ export async function updateInvoice(id: string, formData: FormData) {
   const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
   
-    try {
+  try {
     await sql`
-        UPDATE invoices
-        SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-        WHERE id = ${id}
-      `;
+      UPDATE invoices
+      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+      WHERE id = ${id}
+    `;
   } catch (error) {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
@@ -108,10 +112,14 @@ export async function updateInvoice(id: string, formData: FormData) {
 
 // Delete Invoice
 export async function deleteInvoice(id: string) {
-    throw new Error('Failed to Delete Invoice');
-
-  await sql`DELETE FROM invoices WHERE id = ${id}`;
-  revalidatePath('/dashboard/invoices');
+  try {
+    await sql`DELETE FROM invoices WHERE id = ${id}`;
+    revalidatePath('/dashboard/invoices');
+    return { message: 'Invoice deleted successfully.' };
+  } catch (error) {
+    console.error('Database Error:', error);
+    return { message: 'Database Error: Failed to Delete Invoice.' };
+  }
 }
 
 export async function authenticate(
